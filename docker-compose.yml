@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: domain-checker-backend
+    restart: unless-stopped
+    environment:
+      - DB_PATH=/data/domains.db
+      - RDAP_CONCURRENCY=${RDAP_CONCURRENCY:-5}
+      - RDAP_TIMEOUT_SECONDS=${RDAP_TIMEOUT_SECONDS:-10}
+    volumes:
+      - ./data:/data
+    networks:
+      - domain-checker
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: domain-checker-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - domain-checker
+
+networks:
+  domain-checker:
+    driver: bridge

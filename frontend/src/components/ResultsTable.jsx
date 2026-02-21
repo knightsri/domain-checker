@@ -164,19 +164,24 @@ export default function ResultsTable({
           <tbody>
             {filtered.map((result, index) => {
               const config = STATUS_CONFIG[result.status] || STATUS_CONFIG.ERROR
+              const key = result.id || result.domain || index
               return (
                 <tr
-                  key={result.id}
+                  key={key}
                   className={`border-b border-klee-muted hover:bg-klee-bg transition-colors ${
                     index % 2 === 0 ? 'bg-klee-surface' : 'bg-klee-surface/50'
                   }`}
                 >
                   <td className="px-4 py-4">
-                    <input
-                      type="checkbox"
-                      checked={safeSelectedIds.includes(result.id)}
-                      onChange={() => toggleSelection(result.id)}
-                    />
+                    {result.id ? (
+                      <input
+                        type="checkbox"
+                        checked={safeSelectedIds.includes(result.id)}
+                        onChange={() => toggleSelection(result.id)}
+                      />
+                    ) : (
+                      <span className="text-klee-muted text-xs">•••</span>
+                    )}
                   </td>
                   <td className="px-4 py-4 font-mono text-sm text-klee-text">
                     {result.domain}
@@ -196,12 +201,14 @@ export default function ResultsTable({
                     {formatDate(result.checked_at)}
                   </td>
                   <td className="px-4 py-4">
-                    <button
-                      onClick={() => onDelete(result.id)}
-                      className="text-klee-taken hover:text-klee-accent text-sm font-heading tracking-wider transition-colors"
-                    >
-                      DELETE
-                    </button>
+                    {result.id ? (
+                      <button
+                        onClick={() => onDelete(result.id)}
+                        className="text-klee-taken hover:text-klee-accent text-sm font-heading tracking-wider transition-colors"
+                      >
+                        DELETE
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               )

@@ -34,6 +34,13 @@ def is_valid_domain(domain: str) -> bool:
     return bool(DOMAIN_PATTERN.match(domain))
 
 
+def is_valid_tld(tld: str) -> bool:
+    """Validate TLD format: 2-63 chars, alphanumeric only."""
+    if not tld or len(tld) < 2 or len(tld) > 63:
+        return False
+    return bool(re.match(r'^[a-z0-9]+$', tld, re.IGNORECASE))
+
+
 def parse_domain(domain: str) -> tuple[str, Optional[str]]:
     """Parse domain into (base_name, tld). Returns (domain, None) if no TLD found."""
     domain = domain.strip().lower()
@@ -50,15 +57,24 @@ def expand_domains(domains: list[str], tlds: list[str]) -> list[tuple[str, str, 
     """
     Expand domain list based on TLD logic.
     Returns list of (full_domain, base_name, tld).
-    Skips invalid domain names.
+    Skips invalid domain names and TLDs.
     """
     result = []
-    tlds = [t.strip().lower().lstrip(".") for t in tlds if t.strip()]
+    # Filter and validate TLDs
+    tlds = [
+        t.strip().lower().lstrip(".")
+        for t in tlds
+        if t.strip() and is_valid_tld(t.strip().lower().lstrip("."))
+    ]
 
     for domain in domains:
-        # Clean the domain: strip whitespace, lowercase, remove internal spaces
-        domain = domain.strip().lower().replace(" ", "").replace("\t", "")
+        # Clean the domain: trim edges and lowercase
+        domain = domain.strip().lower()
         if not domain or domain.startswith("#"):
+            continue
+
+        # Reject domains with internal spaces
+        if ' ' in domain or '\t' in domain:
             continue
 
         base_name, existing_tld = parse_domain(domain)

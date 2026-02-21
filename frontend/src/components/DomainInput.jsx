@@ -28,12 +28,15 @@ export default function DomainInput({ onDomainsChange, disabled }) {
       // Skip empty lines and comments
       if (!cleaned || cleaned.startsWith('#')) return
 
-      // Remove any spaces within the domain
-      const noSpaces = cleaned.replace(/\s+/g, '')
+      // If domain contains spaces, it's invalid - don't silently fix it
+      if (/\s/.test(cleaned)) {
+        invalid.push(cleaned)
+        return
+      }
 
-      if (isValidDomain(noSpaces)) {
-        valid.push(noSpaces)
-      } else if (noSpaces) {
+      if (isValidDomain(cleaned)) {
+        valid.push(cleaned)
+      } else {
         invalid.push(cleaned)
       }
     })

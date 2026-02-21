@@ -2,6 +2,10 @@
 
 Bulk domain availability checker with persistent results and recheck workflow.
 
+![Domain Checker Screenshot](https://github.com/user-attachments/assets/f568f0fe-dcdf-4e63-8cc2-f32748fcd7e7)
+
+*Domain Checker — self-hosted domain availability tracking with RDAP, PWA support, and persistent history.*
+
 ## Quick Start
 
 ```bash

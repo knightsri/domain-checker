@@ -100,3 +100,14 @@ export async function deleteResults(ids) {
 export function exportCsv() {
   window.open(`${API_BASE}/export`, '_blank')
 }
+
+export async function getKnownTlds() {
+  try {
+    const response = await fetch(`${API_BASE}/tlds`)
+    const data = await response.json()
+    return data.tlds || []
+  } catch (e) {
+    console.error('Failed to fetch TLDs:', e)
+    return []
+  }
+}

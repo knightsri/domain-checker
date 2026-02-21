@@ -2,9 +2,10 @@ import csv
 import io
 import json
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
+import httpx
 from fastapi import FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -22,10 +23,42 @@ from db import (
 )
 from models import DomainCheckRequest, RecheckRequest
 
+# TLD cache
+_tld_cache: dict = {"tlds": [], "fetched_at": None}
+TLD_CACHE_DURATION = timedelta(hours=24)
+IANA_TLD_URL = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
+
+
+async def fetch_iana_tlds() -> list[str]:
+    """Fetch TLDs from IANA and cache for 24 hours."""
+    now = datetime.utcnow()
+
+    # Return cached if still valid
+    if _tld_cache["fetched_at"] and (now - _tld_cache["fetched_at"]) < TLD_CACHE_DURATION:
+        return _tld_cache["tlds"]
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(IANA_TLD_URL)
+            if response.status_code == 200:
+                lines = response.text.strip().split("\n")
+                # Skip header comment line, convert to lowercase
+                tlds = [line.strip().lower() for line in lines if line and not line.startswith("#")]
+                _tld_cache["tlds"] = tlds
+                _tld_cache["fetched_at"] = now
+                return tlds
+    except Exception:
+        pass
+
+    # Return cached even if expired, or empty if never fetched
+    return _tld_cache["tlds"]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Pre-fetch TLDs on startup
+    await fetch_iana_tlds()
     yield
 
 
@@ -179,3 +212,15 @@ async def export_csv():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/api/tlds")
+async def get_known_tlds():
+    """Get list of known TLDs from IANA."""
+    tlds = await fetch_iana_tlds()
+    return {
+        "tlds": tlds,
+        "count": len(tlds),
+        "source": "IANA",
+        "cached_at": _tld_cache["fetched_at"].isoformat() if _tld_cache["fetched_at"] else None,
+    }

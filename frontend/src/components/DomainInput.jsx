@@ -1,17 +1,46 @@
 import { useState } from 'react'
 
+// Valid domain: alphanumeric, hyphens, dots only. No spaces or special chars.
+const isValidDomain = (domain) => {
+  if (!domain || domain.length === 0) return false
+  // Must match: letters, numbers, hyphens, and dots only
+  // Cannot start or end with hyphen or dot
+  // No consecutive dots
+  const pattern = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i
+  return pattern.test(domain) && domain.length <= 253
+}
+
 export default function DomainInput({ onDomainsChange, disabled }) {
   const [activeTab, setActiveTab] = useState('text')
   const [textInput, setTextInput] = useState('')
   const [domains, setDomains] = useState([])
+  const [invalidDomains, setInvalidDomains] = useState([])
 
   const parseInput = (text) => {
     const lines = text.split('\n')
-    const parsed = lines
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('#'))
-    setDomains(parsed)
-    onDomainsChange(parsed)
+    const valid = []
+    const invalid = []
+
+    lines.forEach(line => {
+      // Clean the input: trim whitespace, convert to lowercase
+      const cleaned = line.trim().toLowerCase()
+
+      // Skip empty lines and comments
+      if (!cleaned || cleaned.startsWith('#')) return
+
+      // Remove any spaces within the domain
+      const noSpaces = cleaned.replace(/\s+/g, '')
+
+      if (isValidDomain(noSpaces)) {
+        valid.push(noSpaces)
+      } else if (noSpaces) {
+        invalid.push(cleaned)
+      }
+    })
+
+    setDomains(valid)
+    setInvalidDomains(invalid)
+    onDomainsChange(valid)
   }
 
   const handleTextChange = (e) => {
@@ -100,11 +129,38 @@ export default function DomainInput({ onDomainsChange, disabled }) {
         </div>
       )}
 
+      {/* Invalid Domains Warning */}
+      {invalidDomains.length > 0 && (
+        <div className="bg-klee-bg border-l-4 border-klee-taken p-4">
+          <p className="text-sm font-heading text-klee-taken mb-3 tracking-wider">
+            {invalidDomains.length} INVALID DOMAIN{invalidDomains.length !== 1 ? 'S' : ''} SKIPPED
+          </p>
+          <div className="flex flex-wrap gap-2 max-h-16 overflow-y-auto">
+            {invalidDomains.slice(0, 10).map((domain, i) => (
+              <span
+                key={i}
+                className="px-3 py-1 bg-klee-surface border-l-2 border-klee-taken text-klee-muted font-mono text-sm line-through"
+              >
+                {domain}
+              </span>
+            ))}
+            {invalidDomains.length > 10 && (
+              <span className="px-3 py-1 text-klee-muted text-sm font-mono">
+                +{invalidDomains.length - 10} more
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-klee-muted mt-2 font-mono">
+            Domains can only contain letters, numbers, hyphens, and dots
+          </p>
+        </div>
+      )}
+
       {/* Parsed Domains Preview */}
       {domains.length > 0 && (
         <div className="bg-klee-bg border-l-4 border-klee-available p-4">
           <p className="text-sm font-heading text-klee-available mb-3 tracking-wider">
-            PARSED {domains.length} DOMAIN{domains.length !== 1 ? 'S' : ''}
+            {domains.length} VALID DOMAIN{domains.length !== 1 ? 'S' : ''}
           </p>
           <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
             {domains.slice(0, 20).map((domain, i) => (

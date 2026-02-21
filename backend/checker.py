@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 from datetime import datetime
 from typing import AsyncGenerator, Optional
 
@@ -14,6 +15,23 @@ KNOWN_TLDS = {
     "ru", "cn", "jp", "kr", "in", "br", "au", "ca", "mx", "tech",
     "online", "site", "store", "shop", "blog", "cloud", "pro",
 }
+
+# Valid domain pattern: alphanumeric, hyphens, dots only
+DOMAIN_PATTERN = re.compile(
+    r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$',
+    re.IGNORECASE
+)
+
+
+def is_valid_domain(domain: str) -> bool:
+    """Validate domain name format."""
+    if not domain or len(domain) > 253:
+        return False
+    # Remove any whitespace
+    domain = domain.strip()
+    if ' ' in domain or '\t' in domain:
+        return False
+    return bool(DOMAIN_PATTERN.match(domain))
 
 
 def parse_domain(domain: str) -> tuple[str, Optional[str]]:
@@ -32,12 +50,14 @@ def expand_domains(domains: list[str], tlds: list[str]) -> list[tuple[str, str, 
     """
     Expand domain list based on TLD logic.
     Returns list of (full_domain, base_name, tld).
+    Skips invalid domain names.
     """
     result = []
     tlds = [t.strip().lower().lstrip(".") for t in tlds if t.strip()]
 
     for domain in domains:
-        domain = domain.strip()
+        # Clean the domain: strip whitespace, lowercase, remove internal spaces
+        domain = domain.strip().lower().replace(" ", "").replace("\t", "")
         if not domain or domain.startswith("#"):
             continue
 
@@ -46,15 +66,21 @@ def expand_domains(domains: list[str], tlds: list[str]) -> list[tuple[str, str, 
             continue
 
         if existing_tld:
-            # Domain already has TLD - check as-is
-            result.append((f"{base_name}.{existing_tld}", base_name, existing_tld))
+            # Domain already has TLD - validate and check as-is
+            full_domain = f"{base_name}.{existing_tld}"
+            if is_valid_domain(full_domain):
+                result.append((full_domain, base_name, existing_tld))
         elif tlds:
             # No TLD - expand against all selected TLDs
             for tld in tlds:
-                result.append((f"{base_name}.{tld}", base_name, tld))
+                full_domain = f"{base_name}.{tld}"
+                if is_valid_domain(full_domain):
+                    result.append((full_domain, base_name, tld))
         else:
-            # No TLD and no TLDs selected - skip or use .com default
-            result.append((f"{base_name}.com", base_name, "com"))
+            # No TLD and no TLDs selected - use .com default
+            full_domain = f"{base_name}.com"
+            if is_valid_domain(full_domain):
+                result.append((full_domain, base_name, "com"))
 
     return result
 

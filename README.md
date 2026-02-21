@@ -14,6 +14,8 @@ Open http://localhost in your browser.
 
 - Bulk domain checking via RDAP API (free, no API key needed)
 - TLD expansion (check `mydomain` against `.com`, `.io`, `.ai`, etc.)
+- TLD validation against IANA's authoritative list (warns on unknown TLDs)
+- Domain name validation (rejects invalid characters, spaces, etc.)
 - Persistent results in SQLite
 - Recheck available domains with one click
 - CSV export
@@ -69,6 +71,7 @@ RDAP endpoints are public and their rate-limit behavior is undocumented. If you'
 | POST | `/api/recheck` | Recheck domains |
 | DELETE | `/api/results/{id}` | Delete result |
 | GET | `/api/export` | Download CSV |
+| GET | `/api/tlds` | Get known TLDs from IANA (cached 24h) |
 
 ## How It Works
 
@@ -78,6 +81,14 @@ RDAP endpoints are public and their rate-limit behavior is undocumented. If you'
 4. Bare domains are expanded against selected TLDs
 5. Results are saved to SQLite and displayed
 6. Use "Recheck ALL Available" to verify availability of domains marked AVAILABLE
+
+### TLD Validation
+
+The app fetches the authoritative list of TLDs from [IANA](https://data.iana.org/TLD/tlds-alpha-by-domain.txt) and caches it for 24 hours. When you enter a custom TLD:
+
+- **Valid TLDs** (e.g., `.com`, `.io`, `.ai`) are checked normally
+- **Unknown TLDs** (e.g., `.g0ld`, `.notreal`) show a warning — RDAP may return "available" for non-existent TLDs, which can be misleading
+- **Invalid TLDs** (e.g., containing spaces or special characters) are skipped entirely
 
 ## Tech Stack
 
